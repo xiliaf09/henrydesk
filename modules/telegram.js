@@ -9,13 +9,14 @@ const path = require('path');
 let bot = null;
 let _S = null;
 let _config = null;
+let _lastMsgId = 0; // anti-duplicate
 
 function initTelegram(S, config) {
   _S = S;
   _config = config;
 
   bot = new TelegramBot(config.telegramToken, {
-    polling: { interval: 1000, params: { timeout: 10 } },
+    polling: { interval: 2000, params: { timeout: 10 } },
   });
 
   bot.on('polling_error', (err) => {
@@ -163,7 +164,11 @@ function initTelegram(S, config) {
 }
 
 function isAuthorized(msg) {
-  return String(msg.chat.id) === String(_config.telegramChatId);
+  if (String(msg.chat.id) !== String(_config.telegramChatId)) return false;
+  // Anti-duplicate: skip if we already processed this message
+  if (msg.message_id && msg.message_id <= _lastMsgId) return false;
+  if (msg.message_id) _lastMsgId = msg.message_id;
+  return true;
 }
 
 function sendMessage(text, options = {}) {

@@ -3,7 +3,7 @@
 // Polls watchlist assets, checks Fibonacci levels, triggers alerts
 // ============================================================
 
-const { getLatestSwings, calcFiboLevels, checkFiboTouch, generateProposal } = require('./fibonacci');
+const { getLatestSwings, calcFiboLevels, checkFiboTouch, generateProposal, generateThesis, estimateDuration } = require('./fibonacci');
 const { sendTradeAlert } = require('./telegram');
 const { captureCharts } = require('./chart');
 const { saveData } = require('./watchlist');
@@ -88,11 +88,15 @@ async function scanSymbol(symbol) {
           _config.trading.riskPerTrade
         );
 
-        // Only alert if R:R >= 1.5
-        if (proposal.rr < 1.5) continue;
+        // Only alert if R:R >= configured minimum (default 2.0)
+        if (proposal.rr < (_config.trading.minRR || 2.0)) continue;
 
         // Capture both chart screenshots
         const charts = await captureCharts(symbol, tf, candles, fiboLevels, swingHigh, swingLow, proposal);
+
+        // Generate thesis and duration
+        const thesis = generateThesis(symbol, tf, touch, swingHigh, swingLow, currentPrice, proposal.side);
+        const duration = estimateDuration(tf);
 
         // Create alert
         const alert = {
@@ -101,6 +105,8 @@ async function scanSymbol(symbol) {
           tf,
           fiboLevel: touch.label,
           proposal,
+          thesis,
+          duration,
           macroChartPath: charts.macroPath,
           tradeChartPath: charts.tradePath,
           sentAt: new Date().toISOString(),

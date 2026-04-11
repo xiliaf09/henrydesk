@@ -148,21 +148,28 @@ async function testChart(symbol = 'BTC', timeframe = '1d') {
   // Fibo levels
   const fiboLevels = calcFiboLevels(swingHigh, swingLow);
 
-  // Mock trade for testing
+  // Mock trade for testing — ensure R:R >= 2
   const lastPrice = candles[candles.length - 1].close;
+  const slPrice = swingLow * 0.995;
+  const slDist = Math.abs(lastPrice - slPrice);
+  const tpPrice = lastPrice + (slDist * 2.5); // force R:R = 2.5
+  const posSize = 500 / slDist;
   const mockTrade = {
     symbol,
     side: 'long',
     entry: lastPrice,
-    sl: swingLow * 0.995,
-    tp: swingHigh * 1.005,
+    sl: slPrice,
+    tp: tpPrice,
     risk: 500,
-    positionSize: 500 / Math.abs(lastPrice - swingLow * 0.995),
-    rr: Math.abs(swingHigh * 1.005 - lastPrice) / Math.abs(lastPrice - swingLow * 0.995),
+    positionSize: posSize,
+    rr: 2.5,
+    potentialWin: parseFloat((slDist * 2.5 * posSize).toFixed(2)),
+    potentialLoss: 500,
   };
 
   const results = await captureCharts(symbol, timeframe, candles, fiboLevels, swingHigh, swingLow, mockTrade);
-  console.log('📸 Test charts generated:', results);
+  results._testProposal = mockTrade;
+  console.log('📸 Test charts generated:', { macroPath: results.macroPath, tradePath: results.tradePath });
   return results;
 }
 

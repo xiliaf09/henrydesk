@@ -43,6 +43,7 @@ const config = {
     maxConcurrentTrades: 2,     // max positions open simultaneously
     marginMode: 'isolated',    // always isolated
     defaultLeverage: 5,        // fallback if not calculated
+    minRR: 2.0,                // minimum R:R to trigger alert (1:2)
   },
 
   // --- Fibonacci ---

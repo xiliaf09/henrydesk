@@ -19,13 +19,17 @@ const S = {
   watchlist: [],          // [{ symbol, addedAt, swingOverride? }]
   activePositions: [],    // [{ symbol, side, entry, sl, tp, size, openedAt, pnl }]
   tradeHistory: [],       // [{ symbol, side, entry, exit, pnl, r, closedAt }]
-  pendingAlerts: [],      // [{ id, symbol, tf, fiboLevel, proposal, chartPath, sentAt }]
+  pendingAlerts: [],      // [{ id, symbol, tf, fiboLevel, proposal, sentAt }]
+  alertHistory: [],       // [{ id, symbol, tf, fiboLevel, thesis, side, sentAt, action }]
   stats: {
     totalTrades: 0,
     wins: 0,
     losses: 0,
     totalPnl: 0,
     avgR: 0,
+    totalAlerts: 0,
+    alertsApproved: 0,
+    alertsRejected: 0,
   },
 };
 
@@ -105,6 +109,30 @@ app.get('/api/history', (req, res) => {
 
 app.get('/api/stats', (req, res) => {
   res.json(S.stats);
+});
+
+app.get('/api/alerts', (req, res) => {
+  res.json(S.alertHistory.slice(-100).reverse());
+});
+
+app.get('/api/overview', (req, res) => {
+  res.json({
+    version: S.version,
+    uptime: process.uptime(),
+    startedAt: S.startedAt,
+    watchlistCount: S.watchlist.length,
+    activePositions: S.activePositions.length,
+    pendingAlerts: S.pendingAlerts.length,
+    stats: S.stats,
+    lastAlert: S.alertHistory.length > 0 ? S.alertHistory[S.alertHistory.length - 1] : null,
+    config: {
+      timeframes: require('./config').fibonacci.timeframes,
+      fiboLevels: require('./config').fibonacci.levels,
+      riskPerTrade: require('./config').trading.riskPerTrade,
+      maxPositions: require('./config').trading.maxConcurrentTrades,
+      minRR: require('./config').trading.minRR,
+    },
+  });
 });
 
 // --- Boot ---

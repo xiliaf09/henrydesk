@@ -117,20 +117,23 @@ function initTelegram(S, config) {
     sendMessage(`🧪 Génération test alert *${coin}*...`);
     try {
       const { testChart } = require('./chart');
-      const charts = await testChart(coin, '1d');
-      if (charts.macroPath) {
-        await bot.sendPhoto(_config.telegramChatId, charts.macroPath, {
-          caption: `📐 *${coin}* — 1D\nFibonacci retracement — test`,
-          parse_mode: 'Markdown',
-        });
-      }
-      if (charts.tradePath) {
-        await bot.sendPhoto(_config.telegramChatId, charts.tradePath, {
-          caption: `🎯 *SETUP TEST — ${coin}*`,
-          parse_mode: 'Markdown',
-        });
-      }
-      sendMessage(`✅ Test alert *${coin}* envoyé.`);
+      const { generateThesis, estimateDuration, calcFiboLevels, getLatestSwings } = require('./fibonacci');
+      const charts = await testChart(coin, '1h');
+
+      // Build a mock alert to test full flow
+      const mockAlert = {
+        id: 'test_' + Date.now(),
+        symbol: coin,
+        tf: '1h',
+        fiboLevel: '61.8%',
+        proposal: charts._testProposal || { side: 'long', entry: 0, sl: 0, tp: 0, risk: 500, positionSize: 0, rr: 2.5, potentialWin: 1250, potentialLoss: 500 },
+        thesis: `${coin} teste le Fibonacci 61.8% sur le 1H. Niveau clé de support — réaction haussière attendue si le prix maintient ce niveau. Setup favorable avec un R:R de 1:2.5.`,
+        duration: estimateDuration('1h'),
+        macroChartPath: charts.macroPath,
+        tradeChartPath: charts.tradePath,
+      };
+
+      await sendTradeAlert(mockAlert);
     } catch (err) {
       sendMessage(`❌ Test échoué: ${err.message}`);
     }
@@ -192,36 +195,63 @@ function sendMessage(text, options = {}) {
 }
 
 async function sendTradeAlert(alert) {
-  const { symbol, tf, fiboLevel, proposal, macroChartPath, tradeChartPath } = alert;
+  const { symbol, tf, fiboLevel, proposal, thesis, duration, macroChartPath, tradeChartPath } = alert;
+  const tfUp = tf.toUpperCase();
+  const sideIcon = proposal.side === 'long' ? '🟢' : '🔴';
+  const fmt = (v) => typeof v === 'number' ? v.toLocaleString('en-US', { maximumFractionDigits: 2 }) : v;
 
-  // ── Screenshot 1: Macro view (Fibonacci overview) ──
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // MESSAGE 1 — ANALYSE
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  // Screenshot macro (Fibonacci overview)
   if (macroChartPath && fs.existsSync(macroChartPath)) {
     await bot.sendPhoto(_config.telegramChatId, macroChartPath, {
-      caption: `📐 *${symbol}* — ${tf.toUpperCase()}\nFibonacci retracement — niveau *${fiboLevel}* touché`,
+      caption: `📐 *ANALYSE — ${symbol} ${tfUp}*`,
       parse_mode: 'Markdown',
     });
   }
 
-  // ── Screenshot 2: Trade setup (zoomed) ──
+  // Analysis text
+  const analysisText =
+    `📐 *ANALYSE*\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `*${symbol}* — ${tfUp}\n` +
+    `Fibonacci *${fiboLevel}* touché\n\n` +
+    `📝 *Thèse :*\n` +
+    `${thesis || 'Niveau Fibonacci clé touché.'}\n\n` +
+    `${sideIcon} Direction : *${proposal.side.toUpperCase()}*\n` +
+    `⏱ Durée estimée : *${duration || '—'}*`;
+
+  await sendMessage(analysisText);
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // MESSAGE 2 — EXÉCUTION
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  // Screenshot trade setup (zoomed with boxes)
   if (tradeChartPath && fs.existsSync(tradeChartPath)) {
     await bot.sendPhoto(_config.telegramChatId, tradeChartPath, {
-      caption: `🎯 *SETUP — ${proposal.side.toUpperCase()}*\nEntry $${proposal.entry} → TP $${proposal.tp}\nSL $${proposal.sl} | Risk $${proposal.risk} | R:R 1:${proposal.rr.toFixed(1)}`,
+      caption: `🎯 *EXÉCUTION — ${symbol} ${proposal.side.toUpperCase()}*`,
       parse_mode: 'Markdown',
     });
   }
 
-  // ── Trade proposal with action buttons ──
-  const text =
-    `📊 *ALERTE FIBONACCI*\n\n` +
-    `*${symbol}* — ${tf.toUpperCase()}\n` +
-    `Niveau *${fiboLevel}* touché\n\n` +
-    `${proposal.side === 'long' ? '🟢' : '🔴'} *${proposal.side.toUpperCase()}*\n` +
-    `▸ Entry: \`${proposal.entry}\`\n` +
-    `▸ Stop Loss: \`${proposal.sl}\`\n` +
-    `▸ Take Profit: \`${proposal.tp}\`\n` +
-    `▸ Risk: \`$${proposal.risk}\`\n` +
-    `▸ Size: \`${proposal.positionSize.toFixed(4)}\`\n` +
-    `▸ R:R = *1:${proposal.rr.toFixed(1)}*`;
+  // Execution text with action buttons
+  const execText =
+    `🎯 *EXÉCUTION*\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `${sideIcon} *${symbol}* — *${proposal.side.toUpperCase()}*\n\n` +
+    `▸ Entry : \`$${fmt(proposal.entry)}\`\n` +
+    `▸ Stop Loss : \`$${fmt(proposal.sl)}\`\n` +
+    `▸ Take Profit : \`$${fmt(proposal.tp)}\`\n\n` +
+    `💰 *Résultat potentiel :*\n` +
+    `▸ Si TP touché : *+$${fmt(proposal.potentialWin || proposal.risk * proposal.rr)}*\n` +
+    `▸ Si SL touché : *-$${fmt(proposal.potentialLoss || proposal.risk)}*\n\n` +
+    `▸ Risk : \`$${proposal.risk}\`\n` +
+    `▸ Size : \`${proposal.positionSize.toFixed(4)}\`\n` +
+    `▸ R:R = *1 : ${proposal.rr.toFixed(1)}*\n` +
+    `▸ Durée : *${duration || '—'}*`;
 
   const keyboard = {
     reply_markup: {
@@ -237,7 +267,7 @@ async function sendTradeAlert(alert) {
     },
   };
 
-  await sendMessage(text, keyboard);
+  await sendMessage(execText, keyboard);
 }
 
 module.exports = { initTelegram, sendMessage, sendTradeAlert };

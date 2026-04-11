@@ -99,6 +99,8 @@ function generateProposal(symbol, currentPrice, fiboLevel, swingHigh, swingLow, 
   const tpDistance = Math.abs(tp - entry);
   const rr = tpDistance / slDistance;
   const positionSize = riskAmount / slDistance;
+  const potentialWin = parseFloat((tpDistance * positionSize).toFixed(2));
+  const potentialLoss = parseFloat((slDistance * positionSize).toFixed(2));
 
   return {
     symbol,
@@ -110,7 +112,51 @@ function generateProposal(symbol, currentPrice, fiboLevel, swingHigh, swingLow, 
     positionSize: parseFloat(positionSize.toFixed(4)),
     rr: parseFloat(rr.toFixed(2)),
     fiboLevel: fiboLevel.label,
+    potentialWin,
+    potentialLoss,
   };
+}
+
+/**
+ * Generate analysis thesis for a Fibo alert
+ */
+function generateThesis(symbol, tf, fiboLevel, swingHigh, swingLow, currentPrice, side) {
+  const fiboName = {
+    '0.236': '23.6% (faible retracement)',
+    '0.382': '38.2% (retracement modéré)',
+    '0.5':   '50% (retracement médian)',
+    '0.618': '61.8% (golden ratio)',
+    '0.786': '78.6% (retracement profond)',
+  };
+  const tfName = { '1h': '1H', '4h': '4H', '1d': 'Daily', '1w': 'Weekly' };
+  const tfImportance = { '1d': 'majeur', '4h': 'intermédiaire', '1h': 'court terme' };
+
+  const levelName = fiboName[fiboLevel.level] || fiboLevel.label;
+  const tfLabel = tfName[tf] || tf;
+  const importance = tfImportance[tf] || '';
+  const range = Math.abs(swingHigh - swingLow);
+  const rangePercent = ((range / swingLow) * 100).toFixed(1);
+
+  const thesis =
+    `${symbol} a touché le Fibonacci ${levelName} sur le ${tfLabel} (niveau ${importance}).` +
+    ` Le prix évolue entre $${swingLow.toFixed(2)} (swing low) et $${swingHigh.toFixed(2)} (swing high),` +
+    ` soit un range de ${rangePercent}%.` +
+    ` Position ${side.toUpperCase()} proposée sur réaction au niveau Fibo.`;
+
+  return thesis;
+}
+
+/**
+ * Estimate trade duration based on timeframe
+ */
+function estimateDuration(tf) {
+  const estimates = {
+    '1h': '4-24h',
+    '4h': '1-3 jours',
+    '1d': '3-10 jours',
+    '1w': '2-6 semaines',
+  };
+  return estimates[tf] || '1-5 jours';
 }
 
 module.exports = {
@@ -119,4 +165,6 @@ module.exports = {
   calcFiboLevels,
   checkFiboTouch,
   generateProposal,
+  generateThesis,
+  estimateDuration,
 };

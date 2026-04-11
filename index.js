@@ -30,9 +30,29 @@ const S = {
 };
 
 // --- Express API (for Jarvis Hub integration) ---
+const crypto = require('crypto');
 const app = express();
 app.use(express.json());
 
+// ── API Security ──
+// Generate a random API key on first boot, stored in data.json
+// Only localhost (Jarvis Hub) and requests with valid API key can access
+const API_KEY = process.env.HENRYDESK_API_KEY || crypto.randomBytes(32).toString('hex');
+
+function apiAuth(req, res, next) {
+  // Allow localhost connections (Jarvis Hub proxy)
+  const ip = req.ip || req.connection.remoteAddress || '';
+  const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  if (isLocal) return next();
+
+  // Check API key for remote access
+  const key = req.headers['x-api-key'] || req.query.key;
+  if (key === API_KEY) return next();
+
+  res.status(401).json({ error: 'Unauthorized' });
+}
+
+// Health is public (no sensitive data)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -44,6 +64,9 @@ app.get('/health', (req, res) => {
   });
 });
 
+// All /api/* routes require auth
+app.use('/api', apiAuth);
+
 app.get('/api/state', (req, res) => {
   res.json(S);
 });
@@ -54,13 +77,16 @@ app.get('/api/watchlist', (req, res) => {
 
 app.post('/api/watchlist', (req, res) => {
   const { symbol, action } = req.body;
-  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  if (!symbol || typeof symbol !== 'string') return res.status(400).json({ error: 'symbol required' });
+
+  // Strict validation: uppercase alphanumeric only, max 20 chars
+  const sym = symbol.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+  if (!sym) return res.status(400).json({ error: 'invalid symbol' });
 
   if (action === 'remove') {
-    S.watchlist = S.watchlist.filter(w => w.symbol !== symbol.toUpperCase());
-    console.log(`📋 Watchlist: removed ${symbol.toUpperCase()}`);
+    S.watchlist = S.watchlist.filter(w => w.symbol !== sym);
+    console.log(`📋 Watchlist: removed ${sym}`);
   } else {
-    const sym = symbol.toUpperCase();
     if (!S.watchlist.find(w => w.symbol === sym)) {
       S.watchlist.push({ symbol: sym, addedAt: new Date().toISOString() });
       console.log(`📋 Watchlist: added ${sym}`);

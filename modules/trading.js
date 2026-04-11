@@ -21,8 +21,8 @@ function initTrading(S, config) {
   if (config.hlPrivateKey) {
     _wallet = new ethers.Wallet(config.hlPrivateKey);
     console.log(`💰 Trading module initialized — LIVE mode`);
-    console.log(`   API wallet: ${_wallet.address}`);
-    console.log(`   Main wallet: ${config.hlWalletAddress}`);
+    console.log(`   API wallet: ${_wallet.address.slice(0, 8)}...${_wallet.address.slice(-4)}`);
+    console.log(`   Main wallet: ${config.hlWalletAddress.slice(0, 8)}...${config.hlWalletAddress.slice(-4)}`);
   } else {
     console.log('💰 Trading module initialized — SIMULATION mode');
   }
@@ -98,7 +98,9 @@ async function hlExchange(action, nonce, vaultAddress = null) {
 
   const data = await res.json();
   if (data.status === 'err') {
-    throw new Error(data.response || JSON.stringify(data));
+    // Sanitize: never expose full API response (could contain sensitive context)
+    const safeMsg = typeof data.response === 'string' ? data.response.slice(0, 100) : 'Unknown error';
+    throw new Error(safeMsg);
   }
   return data;
 }
@@ -151,7 +153,7 @@ async function processApprovedTrades() {
       await executeTrade(alert);
     } catch (err) {
       console.error(`❌ Trade execution failed for ${alert.symbol}:`, err.message);
-      sendMessage(`❌ Erreur exécution *${alert.symbol}*: ${err.message}`);
+      sendMessage(`❌ Erreur exécution *${alert.symbol}*: ${err.message.slice(0, 80)}`);
     }
   }
 }
@@ -255,7 +257,7 @@ async function executeTrade(alert) {
 
   } catch (err) {
     console.error(`❌ Hyperliquid order failed:`, err.message);
-    sendMessage(`❌ Erreur Hyperliquid: ${err.message}`);
+    sendMessage(`❌ Erreur Hyperliquid: ${err.message.slice(0, 80)}`);
     // Still track in simulation
     trackPosition(proposal, alert, coin);
   }

@@ -106,6 +106,31 @@ function initTelegram(S, config) {
     );
   });
 
+  bot.onText(/\/test(?: (.+))?/, async (msg, match) => {
+    if (!isAuthorized(msg)) return;
+    const coin = (match[1] || 'BTC').trim().toUpperCase();
+    sendMessage(`🧪 Génération test alert *${coin}*...`);
+    try {
+      const { testChart } = require('./chart');
+      const charts = await testChart(coin, '1d');
+      if (charts.macroPath) {
+        await bot.sendPhoto(_config.telegramChatId, charts.macroPath, {
+          caption: `📐 *${coin}* — 1D\nFibonacci retracement — test`,
+          parse_mode: 'Markdown',
+        });
+      }
+      if (charts.tradePath) {
+        await bot.sendPhoto(_config.telegramChatId, charts.tradePath, {
+          caption: `🎯 *SETUP TEST — ${coin}*`,
+          parse_mode: 'Markdown',
+        });
+      }
+      sendMessage(`✅ Test alert *${coin}* envoyé.`);
+    } catch (err) {
+      sendMessage(`❌ Test échoué: ${err.message}`);
+    }
+  });
+
   // --- Callback queries (inline buttons for trade approval) ---
   bot.on('callback_query', async (query) => {
     const data = query.data;

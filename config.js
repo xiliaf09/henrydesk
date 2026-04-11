@@ -29,6 +29,7 @@ const config = {
 
   // --- Hyperliquid ---
   hlWalletAddress: process.env.HYPERLIQUID_WALLET_ADDRESS || '',
+  hlApiWalletAddress: process.env.HYPERLIQUID_API_WALLET_ADDRESS || '',
   hlPrivateKey: process.env.HYPERLIQUID_PRIVATE_KEY || '',
 
   // --- Server ---

@@ -14,7 +14,18 @@ function initTelegram(S, config) {
   _S = S;
   _config = config;
 
-  bot = new TelegramBot(config.telegramToken, { polling: true });
+  bot = new TelegramBot(config.telegramToken, {
+    polling: { interval: 1000, params: { timeout: 10 } },
+  });
+
+  bot.on('polling_error', (err) => {
+    if (err.code === 'ETELEGRAM' && err.message.includes('409')) {
+      // Conflict with another instance — will resolve itself
+      return;
+    }
+    console.error('⚠️  Telegram polling error:', err.message);
+  });
+
   console.log('📱 Telegram bot connected');
 
   // --- Command handlers ---

@@ -5,7 +5,7 @@
 
 const { getLatestSwings, calcFiboLevels, checkFiboTouch, generateProposal } = require('./fibonacci');
 const { sendTradeAlert } = require('./telegram');
-const { captureChart } = require('./chart');
+const { captureCharts } = require('./chart');
 const { saveData } = require('./watchlist');
 
 let _S = null;
@@ -91,8 +91,8 @@ async function scanSymbol(symbol) {
         // Only alert if R:R >= 1.5
         if (proposal.rr < 1.5) continue;
 
-        // Capture chart screenshot
-        const chartPath = await captureChart(symbol, tf, fiboLevels, swingHigh, swingLow);
+        // Capture both chart screenshots
+        const charts = await captureCharts(symbol, tf, candles, fiboLevels, swingHigh, swingLow, proposal);
 
         // Create alert
         const alert = {
@@ -101,7 +101,8 @@ async function scanSymbol(symbol) {
           tf,
           fiboLevel: touch.label,
           proposal,
-          chartPath,
+          macroChartPath: charts.macroPath,
+          tradeChartPath: charts.tradePath,
           sentAt: new Date().toISOString(),
           approved: false,
         };

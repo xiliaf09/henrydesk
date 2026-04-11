@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a1a; font-family: -apple-system, 'SF Pro', 'Inter', sans-serif; overflow: hidden; }
+#chart { width: 1280px; height: 720px; position: relative; }
+.chart-header {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; background: linear-gradient(180deg, rgba(10,10,26,0.95) 0%, rgba(10,10,26,0) 100%);
+}
+.chart-symbol { font-size: 22px; font-weight: 900; color: #fff; letter-spacing: 1px; }
+.chart-tf { font-size: 13px; color: #8b8ba3; font-weight: 700; margin-left: 12px; background: rgba(255,255,255,0.08); padding: 4px 10px; border-radius: 6px; }
+.chart-price { font-size: 18px; font-weight: 800; color: #fff; font-family: 'SF Mono', monospace; }
+.chart-badge {
+  position: absolute; top: 16px; right: 20px; z-index: 10;
+  font-size: 11px; font-weight: 800; letter-spacing: 2px; padding: 6px 14px;
+  border-radius: 6px;
+}
+.chart-badge.long { background: rgba(34,197,94,0.2); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+.chart-badge.short { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+
+/* Fibonacci legend */
+.fibo-legend {
+  position: absolute; top: 60px; right: 20px; z-index: 10;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.fibo-item {
+  font-size: 11px; font-family: 'SF Mono', monospace; font-weight: 600;
+  padding: 3px 8px; border-radius: 4px; text-align: right;
+  background: rgba(10,10,26,0.8);
+}
+
+/* Trade info panel */
+.trade-panel {
+  position: absolute; bottom: 16px; left: 20px; z-index: 10;
+  background: rgba(10,10,26,0.92); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 14px 18px; min-width: 280px;
+  backdrop-filter: blur(8px);
+}
+.trade-panel-title { font-size: 10px; color: #8b8ba3; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; margin-bottom: 10px; }
+.trade-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.trade-label { font-size: 12px; color: #8b8ba3; font-weight: 600; }
+.trade-val { font-size: 13px; color: #fff; font-weight: 700; font-family: 'SF Mono', monospace; }
+.trade-val.green { color: #22c55e; }
+.trade-val.red { color: #ef4444; }
+.trade-val.blue { color: #3b82f6; }
+.trade-rr { font-size: 16px; font-weight: 900; color: #fbbf24; margin-top: 6px; text-align: center; letter-spacing: 1px; }
+
+/* Watermark */
+.watermark {
+  position: absolute; bottom: 16px; right: 20px; z-index: 10;
+  font-size: 10px; color: rgba(255,255,255,0.15); font-weight: 700; letter-spacing: 2px;
+}
+</style>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+<div id="chart">
+  <div class="chart-header">
+    <div style="display:flex;align-items:center">
+      <span class="chart-symbol" id="symbol"></span>
+      <span class="chart-tf" id="timeframe"></span>
+    </div>
+    <span class="chart-price" id="price"></span>
+  </div>
+  <div class="chart-badge" id="badge" style="display:none"></div>
+  <div class="fibo-legend" id="fibo-legend"></div>
+  <div class="trade-panel" id="trade-panel" style="display:none">
+    <div class="trade-panel-title">TRADE SETUP</div>
+    <div id="trade-details"></div>
+  </div>
+  <div class="watermark">HENRYDESK</div>
+</div>
+
+<script>
+// Data injected by Puppeteer
+const DATA = window.__CHART_DATA__ || {};
+
+function render() {
+  const { candles, symbol, timeframe, fiboLevels, swingHigh, swingLow, trade, mode } = DATA;
+  if (!candles || !candles.length) return;
+
+  // Header
+  document.getElementById('symbol').textContent = symbol;
+  document.getElementById('timeframe').textContent = timeframe.toUpperCase();
+  const lastPrice = candles[candles.length - 1].close;
+  document.getElementById('price').textContent = '$' + lastPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
+
+  // Create chart
+  const container = document.getElementById('chart');
+  const chart = LightweightCharts.createChart(container, {
+    width: 1280,
+    height: 720,
+    layout: {
+      background: { type: 'solid', color: '#0a0a1a' },
+      textColor: '#8b8ba3',
+      fontFamily: "-apple-system, 'SF Pro', 'Inter', sans-serif",
+      fontSize: 11,
+    },
+    grid: {
+      vertLines: { color: 'rgba(255,255,255,0.03)' },
+      horzLines: { color: 'rgba(255,255,255,0.03)' },
+    },
+    crosshair: { mode: 0 },
+    rightPriceScale: {
+      borderColor: 'rgba(255,255,255,0.1)',
+      scaleMargins: { top: 0.12, bottom: 0.08 },
+    },
+    timeScale: {
+      borderColor: 'rgba(255,255,255,0.1)',
+      timeVisible: true,
+      secondsVisible: false,
+    },
+    handleScroll: false,
+    handleScale: false,
+  });
+
+  // Candlestick series
+  const candleSeries = chart.addCandlestickSeries({
+    upColor: '#22c55e',
+    downColor: '#ef4444',
+    borderDownColor: '#ef4444',
+    borderUpColor: '#22c55e',
+    wickDownColor: '#ef4444',
+    wickUpColor: '#22c55e',
+  });
+
+  const chartData = candles.map(c => ({
+    time: Math.floor(c.time / 1000),
+    open: c.open,
+    high: c.high,
+    low: c.low,
+    close: c.close,
+  }));
+  candleSeries.setData(chartData);
+
+  // Volume
+  const volumeSeries = chart.addHistogramSeries({
+    color: 'rgba(59,130,246,0.15)',
+    priceFormat: { type: 'volume' },
+    priceScaleId: '',
+  });
+  volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+  volumeSeries.setData(candles.map(c => ({
+    time: Math.floor(c.time / 1000),
+    value: c.volume,
+    color: c.close >= c.open ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+  })));
+
+  // ── Fibonacci levels ──
+  const fiboColors = {
+    '0.236': '#9ca3af',
+    '0.382': '#fbbf24',
+    '0.5':   '#f97316',
+    '0.618': '#ef4444',
+    '0.786': '#a855f7',
+  };
+
+  if (fiboLevels && fiboLevels.length) {
+    const legend = document.getElementById('fibo-legend');
+    fiboLevels.forEach(f => {
+      const color = fiboColors[f.level.toString()] || '#fbbf24';
+
+      // Draw price line
+      candleSeries.createPriceLine({
+        price: f.price,
+        color: color,
+        lineWidth: 1,
+        lineStyle: 2, // dashed
+        axisLabelVisible: true,
+        title: f.label,
+      });
+
+      // Legend item
+      const item = document.createElement('div');
+      item.className = 'fibo-item';
+      item.style.color = color;
+      item.textContent = f.label + '  $' + f.price.toFixed(2);
+      legend.appendChild(item);
+    });
+
+    // Swing high/low lines
+    if (swingHigh) {
+      candleSeries.createPriceLine({
+        price: swingHigh,
+        color: '#22c55e',
+        lineWidth: 2,
+        lineStyle: 0,
+        axisLabelVisible: true,
+        title: 'Swing High',
+      });
+    }
+    if (swingLow) {
+      candleSeries.createPriceLine({
+        price: swingLow,
+        color: '#ef4444',
+        lineWidth: 2,
+        lineStyle: 0,
+        axisLabelVisible: true,
+        title: 'Swing Low',
+      });
+    }
+  }
+
+  // ── Trade setup (mode = 'trade') ──
+  if (mode === 'trade' && trade) {
+    const badge = document.getElementById('badge');
+    badge.style.display = 'block';
+    badge.className = 'chart-badge ' + trade.side;
+    badge.textContent = trade.side.toUpperCase();
+
+    // Entry line
+    candleSeries.createPriceLine({
+      price: trade.entry,
+      color: '#3b82f6',
+      lineWidth: 2,
+      lineStyle: 0,
+      axisLabelVisible: true,
+      title: '► ENTRY',
+    });
+
+    // SL line
+    candleSeries.createPriceLine({
+      price: trade.sl,
+      color: '#ef4444',
+      lineWidth: 2,
+      lineStyle: 0,
+      axisLabelVisible: true,
+      title: '✕ STOP LOSS',
+    });
+
+    // TP line
+    candleSeries.createPriceLine({
+      price: trade.tp,
+      color: '#22c55e',
+      lineWidth: 2,
+      lineStyle: 0,
+      axisLabelVisible: true,
+      title: '✓ TAKE PROFIT',
+    });
+
+    // SL zone (red shaded area)
+    const slZone = chart.addAreaSeries({
+      topColor: 'rgba(239,68,68,0.08)',
+      bottomColor: 'rgba(239,68,68,0.08)',
+      lineColor: 'transparent',
+      priceScaleId: 'right',
+    });
+    const zoneData = chartData.slice(-30).map(d => ({
+      time: d.time,
+      value: trade.side === 'long' ? trade.sl : trade.sl,
+    }));
+    // We'll use markers instead for cleaner look
+
+    // Trade panel
+    const panel = document.getElementById('trade-panel');
+    panel.style.display = 'block';
+    document.getElementById('trade-details').innerHTML =
+      '<div class="trade-row"><span class="trade-label">Entry</span><span class="trade-val blue">$' + trade.entry.toLocaleString('en-US', {maximumFractionDigits: 6}) + '</span></div>' +
+      '<div class="trade-row"><span class="trade-label">Stop Loss</span><span class="trade-val red">$' + trade.sl.toLocaleString('en-US', {maximumFractionDigits: 6}) + '</span></div>' +
+      '<div class="trade-row"><span class="trade-label">Take Profit</span><span class="trade-val green">$' + trade.tp.toLocaleString('en-US', {maximumFractionDigits: 6}) + '</span></div>' +
+      '<div class="trade-row"><span class="trade-label">Risk</span><span class="trade-val">$' + trade.risk + '</span></div>' +
+      '<div class="trade-row"><span class="trade-label">Size</span><span class="trade-val">' + trade.positionSize.toFixed(4) + '</span></div>' +
+      '<div class="trade-rr">R:R  1 : ' + trade.rr.toFixed(1) + '</div>';
+
+    // Zoom to trade area
+    const prices = [trade.entry, trade.sl, trade.tp];
+    const minP = Math.min(...prices);
+    const maxP = Math.max(...prices);
+    const padding = (maxP - minP) * 0.3;
+    // Focus on last 60 candles for trade view
+    chart.timeScale().setVisibleLogicalRange({ from: chartData.length - 60, to: chartData.length + 5 });
+  } else {
+    // Macro view — show all data
+    chart.timeScale().fitContent();
+  }
+
+  // Signal render complete
+  window.__CHART_READY__ = true;
+}
+
+// Wait for data injection then render
+if (window.__CHART_DATA__) {
+  render();
+} else {
+  Object.defineProperty(window, '__CHART_DATA__', {
+    set(val) { DATA.__proto__ = {}; Object.assign(DATA, val); render(); },
+    get() { return DATA; },
+    configurable: true,
+  });
+}
+</script>
+</body>
+</html>

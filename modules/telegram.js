@@ -150,19 +150,36 @@ function sendMessage(text, options = {}) {
 }
 
 async function sendTradeAlert(alert) {
-  const { symbol, tf, fiboLevel, proposal, chartPath } = alert;
+  const { symbol, tf, fiboLevel, proposal, macroChartPath, tradeChartPath } = alert;
 
+  // ── Screenshot 1: Macro view (Fibonacci overview) ──
+  if (macroChartPath && fs.existsSync(macroChartPath)) {
+    await bot.sendPhoto(_config.telegramChatId, macroChartPath, {
+      caption: `📐 *${symbol}* — ${tf.toUpperCase()}\nFibonacci retracement — niveau *${fiboLevel}* touché`,
+      parse_mode: 'Markdown',
+    });
+  }
+
+  // ── Screenshot 2: Trade setup (zoomed) ──
+  if (tradeChartPath && fs.existsSync(tradeChartPath)) {
+    await bot.sendPhoto(_config.telegramChatId, tradeChartPath, {
+      caption: `🎯 *SETUP — ${proposal.side.toUpperCase()}*\nEntry $${proposal.entry} → TP $${proposal.tp}\nSL $${proposal.sl} | Risk $${proposal.risk} | R:R 1:${proposal.rr.toFixed(1)}`,
+      parse_mode: 'Markdown',
+    });
+  }
+
+  // ── Trade proposal with action buttons ──
   const text =
-    `🎯 *ALERTE FIBONACCI*\n\n` +
-    `*${symbol}* — ${tf}\n` +
-    `Niveau: *${fiboLevel}* touché\n\n` +
-    `📐 *Proposition:*\n` +
-    `Side: ${proposal.side.toUpperCase()}\n` +
-    `Entry: ${proposal.entry}\n` +
-    `SL: ${proposal.sl}\n` +
-    `TP: ${proposal.tp}\n` +
-    `Risk: $${proposal.risk}\n` +
-    `R:R = 1:${proposal.rr.toFixed(1)}`;
+    `📊 *ALERTE FIBONACCI*\n\n` +
+    `*${symbol}* — ${tf.toUpperCase()}\n` +
+    `Niveau *${fiboLevel}* touché\n\n` +
+    `${proposal.side === 'long' ? '🟢' : '🔴'} *${proposal.side.toUpperCase()}*\n` +
+    `▸ Entry: \`${proposal.entry}\`\n` +
+    `▸ Stop Loss: \`${proposal.sl}\`\n` +
+    `▸ Take Profit: \`${proposal.tp}\`\n` +
+    `▸ Risk: \`$${proposal.risk}\`\n` +
+    `▸ Size: \`${proposal.positionSize.toFixed(4)}\`\n` +
+    `▸ R:R = *1:${proposal.rr.toFixed(1)}*`;
 
   const keyboard = {
     reply_markup: {
@@ -172,20 +189,12 @@ async function sendTradeAlert(alert) {
           { text: '❌ Rejeter', callback_data: `reject_${alert.id}` },
         ],
         [
-          { text: '✏️ Ajuster', callback_data: `adjust_${alert.id}` },
+          { text: '✏️ Ajuster SL/TP', callback_data: `adjust_${alert.id}` },
         ],
       ],
     },
   };
 
-  // Send chart screenshot first
-  if (chartPath && fs.existsSync(chartPath)) {
-    await bot.sendPhoto(_config.telegramChatId, chartPath, {
-      caption: `📊 ${symbol} — ${tf} — Fibo ${fiboLevel}`,
-    });
-  }
-
-  // Then send the trade proposal with buttons
   await sendMessage(text, keyboard);
 }
 

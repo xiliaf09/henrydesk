@@ -1,5 +1,6 @@
 // ============================================================
-// HENRYDESK — Chart Screenshot Generator (TradingView)
+// HENRYDESK — Chart Screenshot Generator
+// Lightweight Charts + Puppeteer
 // ============================================================
 
 const puppeteer = require('puppeteer');
@@ -7,8 +8,8 @@ const path = require('path');
 const fs = require('fs');
 
 const SCREENSHOTS_DIR = path.join(__dirname, '..', 'screenshots');
+const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'chart.html');
 
-// Ensure screenshots directory exists
 if (!fs.existsSync(SCREENSHOTS_DIR)) {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 }
@@ -16,7 +17,7 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) {
 let browser = null;
 
 async function initBrowser() {
-  if (!browser) {
+  if (!browser || !browser.isConnected()) {
     browser = await puppeteer.launch({
       headless: 'new',
       args: [
@@ -24,6 +25,7 @@ async function initBrowser() {
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
+        '--font-render-hinting=none',
       ],
     });
     console.log('🖼️  Puppeteer browser launched');
@@ -32,71 +34,136 @@ async function initBrowser() {
 }
 
 /**
- * Generate a TradingView chart screenshot with Fibonacci levels drawn
+ * Generate both chart screenshots for a Fibonacci alert
+ * Returns { macroPath, tradePath }
  */
-async function captureChart(symbol, timeframe, fiboLevels, swingHigh, swingLow) {
+async function captureCharts(symbol, timeframe, candles, fiboLevels, swingHigh, swingLow, trade) {
+  const b = await initBrowser();
+  const timestamp = Date.now();
+  const results = {};
+
+  // ── Screenshot 1: Macro view (Fibonacci overview) ──
+  try {
+    results.macroPath = await renderChart({
+      candles,
+      symbol,
+      timeframe,
+      fiboLevels,
+      swingHigh,
+      swingLow,
+      trade: null,
+      mode: 'macro',
+    }, `${symbol}_${timeframe}_macro_${timestamp}.png`);
+    console.log(`📸 Macro chart: ${symbol} ${timeframe}`);
+  } catch (err) {
+    console.error(`❌ Macro chart failed:`, err.message);
+    results.macroPath = null;
+  }
+
+  // ── Screenshot 2: Trade setup (zoomed with entry/SL/TP) ──
+  if (trade) {
+    try {
+      results.tradePath = await renderChart({
+        candles,
+        symbol,
+        timeframe,
+        fiboLevels,
+        swingHigh,
+        swingLow,
+        trade,
+        mode: 'trade',
+      }, `${symbol}_${timeframe}_trade_${timestamp}.png`);
+      console.log(`📸 Trade chart: ${symbol} ${timeframe}`);
+    } catch (err) {
+      console.error(`❌ Trade chart failed:`, err.message);
+      results.tradePath = null;
+    }
+  }
+
+  return results;
+}
+
+async function renderChart(data, filename) {
   const b = await initBrowser();
   const page = await b.newPage();
   await page.setViewport({ width: 1280, height: 720 });
 
-  // TradingView timeframe mapping
-  const tfMap = { '1h': '60', '4h': '240', '1d': 'D', '1w': 'W' };
-  const tvTf = tfMap[timeframe] || 'D';
+  // Load template
+  const templateUrl = 'file:///' + TEMPLATE_PATH.replace(/\\/g, '/');
+  await page.goto(templateUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
-  // Format symbol for TradingView (most perps are on major exchanges)
-  const tvSymbol = `BINANCE:${symbol}.P`;
+  // Inject chart data
+  await page.evaluate((chartData) => {
+    window.__CHART_DATA__ = chartData;
+  }, data);
 
-  // Build TradingView widget URL
-  const widgetUrl = `https://s.tradingview.com/widgetembed/?` +
-    `frameElementId=tv_chart&symbol=${tvSymbol}&interval=${tvTf}` +
-    `&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=1a1a2e` +
-    `&studies=[]&theme=dark&style=1&timezone=Etc/UTC` +
-    `&withdateranges=0&showpopupbutton=0&studies_overrides={}` +
-    `&overrides={"paneProperties.background":"#0a0a1a","paneProperties.backgroundType":"solid"}` +
-    `&enabled_features=[]&disabled_features=["header_widget"]` +
-    `&locale=en&utm_source=henrydesk`;
+  // Wait for chart to render
+  await page.waitForFunction(() => window.__CHART_READY__ === true, { timeout: 10000 });
+  // Extra wait for animations
+  await new Promise(r => setTimeout(r, 500));
 
-  try {
-    await page.goto(widgetUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-    await page.waitForTimeout(3000); // Let chart render
+  // Screenshot
+  const filepath = path.join(SCREENSHOTS_DIR, filename);
+  await page.screenshot({ path: filepath, type: 'png' });
+  await page.close();
 
-    // Draw Fibonacci levels as overlay
-    await page.evaluate((levels, high, low) => {
-      const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:9999;';
+  return filepath;
+}
 
-      // Add Fibonacci level labels
-      const chartHeight = window.innerHeight;
-      const priceRange = high - low;
+/**
+ * Quick test: generate chart with real data
+ */
+async function testChart(symbol = 'BTC', timeframe = '1d') {
+  const { calcFiboLevels, getLatestSwings } = require('./fibonacci');
 
-      levels.forEach(l => {
-        const yPercent = ((high - l.price) / priceRange) * 100;
-        const div = document.createElement('div');
-        div.style.cssText = `position:absolute;right:10px;top:${yPercent}%;color:#ffd700;font-size:11px;font-family:monospace;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:3px;`;
-        div.textContent = `${l.label} — $${l.price.toFixed(2)}`;
-        overlay.appendChild(div);
+  // Fetch candles
+  const res = await fetch('https://api.hyperliquid.xyz/info', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'candleSnapshot',
+      req: {
+        coin: symbol,
+        interval: timeframe,
+        startTime: Date.now() - (200 * 86400000),
+        endTime: Date.now(),
+      },
+    }),
+  });
+  const raw = await res.json();
+  const candles = raw.map(c => ({
+    time: c.t,
+    open: parseFloat(c.o),
+    high: parseFloat(c.h),
+    low: parseFloat(c.l),
+    close: parseFloat(c.c),
+    volume: parseFloat(c.v),
+  }));
 
-        const line = document.createElement('div');
-        line.style.cssText = `position:absolute;left:0;right:0;top:${yPercent}%;height:1px;background:rgba(255,215,0,0.4);`;
-        overlay.appendChild(line);
-      });
+  // Detect swings
+  const swings = getLatestSwings(candles, 5);
+  const swingHigh = swings.swingHigh?.price || Math.max(...candles.slice(-50).map(c => c.high));
+  const swingLow = swings.swingLow?.price || Math.min(...candles.slice(-50).map(c => c.low));
 
-      document.body.appendChild(overlay);
-    }, fiboLevels, swingHigh, swingLow);
+  // Fibo levels
+  const fiboLevels = calcFiboLevels(swingHigh, swingLow);
 
-    // Take screenshot
-    const filename = `${symbol}_${timeframe}_${Date.now()}.png`;
-    const filepath = path.join(SCREENSHOTS_DIR, filename);
-    await page.screenshot({ path: filepath, type: 'png' });
+  // Mock trade for testing
+  const lastPrice = candles[candles.length - 1].close;
+  const mockTrade = {
+    symbol,
+    side: 'long',
+    entry: lastPrice,
+    sl: swingLow * 0.995,
+    tp: swingHigh * 1.005,
+    risk: 500,
+    positionSize: 500 / Math.abs(lastPrice - swingLow * 0.995),
+    rr: Math.abs(swingHigh * 1.005 - lastPrice) / Math.abs(lastPrice - swingLow * 0.995),
+  };
 
-    await page.close();
-    console.log(`📸 Chart captured: ${filename}`);
-    return filepath;
-  } catch (err) {
-    console.error(`❌ Chart capture failed for ${symbol}:`, err.message);
-    await page.close().catch(() => {});
-    return null;
-  }
+  const results = await captureCharts(symbol, timeframe, candles, fiboLevels, swingHigh, swingLow, mockTrade);
+  console.log('📸 Test charts generated:', results);
+  return results;
 }
 
 async function closeBrowser() {
@@ -106,4 +173,4 @@ async function closeBrowser() {
   }
 }
 
-module.exports = { captureChart, closeBrowser };
+module.exports = { captureCharts, testChart, closeBrowser };

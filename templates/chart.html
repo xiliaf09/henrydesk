@@ -4,55 +4,64 @@
 <meta charset="utf-8">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0a1a; font-family: -apple-system, 'SF Pro', 'Inter', sans-serif; overflow: hidden; }
+body { background: #131722; font-family: -apple-system, 'SF Pro', 'Inter', sans-serif; overflow: hidden; }
 #chart { width: 1280px; height: 720px; position: relative; }
 .chart-header {
   position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; background: linear-gradient(180deg, rgba(10,10,26,0.95) 0%, rgba(10,10,26,0) 100%);
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; background: linear-gradient(180deg, rgba(19,23,34,0.95) 0%, rgba(19,23,34,0) 100%);
 }
-.chart-symbol { font-size: 22px; font-weight: 900; color: #fff; letter-spacing: 1px; }
-.chart-tf { font-size: 13px; color: #8b8ba3; font-weight: 700; margin-left: 12px; background: rgba(255,255,255,0.08); padding: 4px 10px; border-radius: 6px; }
-.chart-price { font-size: 18px; font-weight: 800; color: #fff; font-family: 'SF Mono', monospace; }
-.chart-badge {
-  position: absolute; top: 16px; right: 20px; z-index: 10;
-  font-size: 11px; font-weight: 800; letter-spacing: 2px; padding: 6px 14px;
-  border-radius: 6px;
-}
-.chart-badge.long { background: rgba(34,197,94,0.2); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
-.chart-badge.short { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+.chart-symbol { font-size: 20px; font-weight: 800; color: #d1d4dc; letter-spacing: 0.5px; }
+.chart-tf { font-size: 12px; color: #787b86; font-weight: 600; background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 4px; }
+.chart-price { font-size: 16px; font-weight: 700; color: #d1d4dc; font-family: 'SF Mono', monospace; margin-left: auto; }
+.chart-ema { font-size: 11px; color: #2962ff; font-weight: 600; }
 
 /* Fibonacci legend */
 .fibo-legend {
-  position: absolute; top: 60px; right: 20px; z-index: 10;
-  display: flex; flex-direction: column; gap: 4px;
+  position: absolute; top: 55px; right: 16px; z-index: 10;
+  display: flex; flex-direction: column; gap: 3px;
 }
 .fibo-item {
-  font-size: 11px; font-family: 'SF Mono', monospace; font-weight: 600;
-  padding: 3px 8px; border-radius: 4px; text-align: right;
-  background: rgba(10,10,26,0.8);
+  font-size: 10px; font-family: 'SF Mono', monospace; font-weight: 600;
+  padding: 2px 6px; border-radius: 3px; text-align: right;
+  background: rgba(19,23,34,0.85);
 }
 
 /* Trade info panel */
 .trade-panel {
-  position: absolute; bottom: 20px; left: 20px; z-index: 10;
-  background: rgba(10,10,26,0.95); border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 14px; padding: 18px 22px; min-width: 320px;
-  backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  position: absolute; bottom: 18px; left: 18px; z-index: 10;
+  background: rgba(19,23,34,0.95); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 16px 20px; min-width: 300px;
+  backdrop-filter: blur(12px); box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
-.trade-panel-title { font-size: 11px; color: #8b8ba3; text-transform: uppercase; letter-spacing: 2.5px; font-weight: 800; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px; }
-.trade-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.trade-label { font-size: 13px; color: #8b8ba3; font-weight: 600; }
-.trade-val { font-size: 14px; color: #fff; font-weight: 700; font-family: 'SF Mono', monospace; }
-.trade-val.green { color: #22c55e; }
-.trade-val.red { color: #ef4444; }
-.trade-val.blue { color: #3b82f6; }
-.trade-rr { font-size: 20px; font-weight: 900; color: #fbbf24; margin-top: 10px; text-align: center; letter-spacing: 1.5px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); }
+.trade-panel-title { font-size: 10px; color: #787b86; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 6px; }
+.trade-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.trade-label { font-size: 12px; color: #787b86; font-weight: 600; }
+.trade-val { font-size: 13px; color: #d1d4dc; font-weight: 700; font-family: 'SF Mono', monospace; }
+.trade-val.green { color: #26a69a; }
+.trade-val.red { color: #ef5350; }
+.trade-val.blue { color: #2962ff; }
+.trade-rr { font-size: 18px; font-weight: 900; color: #ffd54f; margin-top: 8px; text-align: center; letter-spacing: 1px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); }
 
-/* Watermark */
+/* High/Low badges */
+.hl-badge {
+  position: absolute; right: 65px; z-index: 10;
+  font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px;
+  font-family: 'SF Mono', monospace;
+}
+.hl-high { color: #26a69a; background: rgba(38,166,154,0.15); }
+.hl-low { color: #ef5350; background: rgba(239,83,80,0.15); }
+
+.chart-badge {
+  position: absolute; top: 14px; right: 80px; z-index: 10;
+  font-size: 11px; font-weight: 800; letter-spacing: 2px; padding: 5px 12px; border-radius: 4px;
+}
+.chart-badge.long { background: rgba(38,166,154,0.2); color: #26a69a; border: 1px solid rgba(38,166,154,0.3); }
+.chart-badge.short { background: rgba(239,83,80,0.2); color: #ef5350; border: 1px solid rgba(239,83,80,0.3); }
+
 .watermark {
-  position: absolute; bottom: 16px; right: 20px; z-index: 10;
-  font-size: 10px; color: rgba(255,255,255,0.15); font-weight: 700; letter-spacing: 2px;
+  position: absolute; bottom: 14px; right: 16px; z-index: 10;
+  font-size: 9px; color: rgba(255,255,255,0.08); font-weight: 700; letter-spacing: 2px;
 }
 </style>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -60,10 +69,9 @@ body { background: #0a0a1a; font-family: -apple-system, 'SF Pro', 'Inter', sans-
 <body>
 <div id="chart">
   <div class="chart-header">
-    <div style="display:flex;align-items:center">
-      <span class="chart-symbol" id="symbol"></span>
-      <span class="chart-tf" id="timeframe"></span>
-    </div>
+    <span class="chart-symbol" id="symbol"></span>
+    <span class="chart-tf" id="timeframe"></span>
+    <span class="chart-ema" id="ema-label"></span>
     <span class="chart-price" id="price"></span>
   </div>
   <div class="chart-badge" id="badge" style="display:none"></div>
@@ -76,41 +84,49 @@ body { background: #0a0a1a; font-family: -apple-system, 'SF Pro', 'Inter', sans-
 </div>
 
 <script>
-// Data injected by Puppeteer
 const DATA = window.__CHART_DATA__ || {};
+
+function calcEMA(candles, period) {
+  const k = 2 / (period + 1);
+  const ema = [candles[0].close];
+  for (let i = 1; i < candles.length; i++) {
+    ema.push(candles[i].close * k + ema[i - 1] * (1 - k));
+  }
+  return ema;
+}
 
 function render() {
   const { candles, symbol, timeframe, fiboLevels, swingHigh, swingLow, trade, mode } = DATA;
   if (!candles || !candles.length) return;
 
   // Header
-  document.getElementById('symbol').textContent = symbol;
+  document.getElementById('symbol').textContent = symbol + 'USDT.P';
   document.getElementById('timeframe').textContent = timeframe.toUpperCase();
   const lastPrice = candles[candles.length - 1].close;
-  document.getElementById('price').textContent = '$' + lastPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  document.getElementById('price').textContent = lastPrice.toLocaleString('en-US', { maximumFractionDigits: 2 });
 
-  // Create chart
+  // Chart — TradingView dark theme
   const container = document.getElementById('chart');
   const chart = LightweightCharts.createChart(container, {
     width: 1280,
     height: 720,
     layout: {
-      background: { type: 'solid', color: '#0a0a1a' },
-      textColor: '#8b8ba3',
+      background: { type: 'solid', color: '#131722' },
+      textColor: '#787b86',
       fontFamily: "-apple-system, 'SF Pro', 'Inter', sans-serif",
       fontSize: 11,
     },
     grid: {
-      vertLines: { color: 'rgba(255,255,255,0.03)' },
-      horzLines: { color: 'rgba(255,255,255,0.03)' },
+      vertLines: { color: 'rgba(42,46,57,0.6)' },
+      horzLines: { color: 'rgba(42,46,57,0.6)' },
     },
     crosshair: { mode: 0 },
     rightPriceScale: {
-      borderColor: 'rgba(255,255,255,0.1)',
-      scaleMargins: { top: 0.12, bottom: 0.08 },
+      borderColor: '#2a2e39',
+      scaleMargins: { top: 0.08, bottom: 0.08 },
     },
     timeScale: {
-      borderColor: 'rgba(255,255,255,0.1)',
+      borderColor: '#2a2e39',
       timeVisible: true,
       secondsVisible: false,
     },
@@ -120,12 +136,12 @@ function render() {
 
   // Candlestick series
   const candleSeries = chart.addCandlestickSeries({
-    upColor: '#22c55e',
-    downColor: '#ef4444',
-    borderDownColor: '#ef4444',
-    borderUpColor: '#22c55e',
-    wickDownColor: '#ef4444',
-    wickUpColor: '#22c55e',
+    upColor: '#26a69a',
+    downColor: '#ef5350',
+    borderDownColor: '#ef5350',
+    borderUpColor: '#26a69a',
+    wickDownColor: '#ef5350',
+    wickUpColor: '#26a69a',
   });
 
   const chartData = candles.map(c => ({
@@ -137,44 +153,58 @@ function render() {
   }));
   candleSeries.setData(chartData);
 
+  // ── EMA ──
+  const emaPeriod = timeframe === '1d' || timeframe === '1w' ? 50 : 20;
+  const emaValues = calcEMA(candles, emaPeriod);
+  const emaLabel = document.getElementById('ema-label');
+  emaLabel.textContent = 'EMA ' + emaPeriod + ': ' + emaValues[emaValues.length - 1].toFixed(2);
+
+  const emaSeries = chart.addLineSeries({
+    color: '#2962ff',
+    lineWidth: 2,
+    priceLineVisible: false,
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  emaSeries.setData(chartData.map((d, i) => ({
+    time: d.time,
+    value: emaValues[i],
+  })));
+
   // Volume
   const volumeSeries = chart.addHistogramSeries({
-    color: 'rgba(59,130,246,0.15)',
+    color: 'rgba(59,130,246,0.1)',
     priceFormat: { type: 'volume' },
     priceScaleId: '',
   });
-  volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+  volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.88, bottom: 0 } });
   volumeSeries.setData(candles.map(c => ({
     time: Math.floor(c.time / 1000),
     value: c.volume,
-    color: c.close >= c.open ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+    color: c.close >= c.open ? 'rgba(38,166,154,0.15)' : 'rgba(239,83,80,0.15)',
   })));
 
   // ── Fibonacci levels ──
   const fiboColors = {
-    '0.236': '#9ca3af',
-    '0.382': '#fbbf24',
-    '0.5':   '#f97316',
-    '0.618': '#ef4444',
-    '0.786': '#a855f7',
+    '0.236': '#787b86',
+    '0.382': '#f7931a',
+    '0.5':   '#e91e63',
+    '0.618': '#ef5350',
+    '0.786': '#ab47bc',
   };
 
   if (fiboLevels && fiboLevels.length) {
     const legend = document.getElementById('fibo-legend');
     fiboLevels.forEach(f => {
-      const color = fiboColors[f.level.toString()] || '#fbbf24';
-
-      // Draw price line
+      const color = fiboColors[f.level.toString()] || '#f7931a';
       candleSeries.createPriceLine({
         price: f.price,
         color: color,
         lineWidth: 1,
-        lineStyle: 2, // dashed
+        lineStyle: 2,
         axisLabelVisible: true,
         title: f.label,
       });
-
-      // Legend item
       const item = document.createElement('div');
       item.className = 'fibo-item';
       item.style.color = color;
@@ -182,112 +212,114 @@ function render() {
       legend.appendChild(item);
     });
 
-    // Swing high/low lines
     if (swingHigh) {
-      candleSeries.createPriceLine({
-        price: swingHigh,
-        color: '#22c55e',
-        lineWidth: 2,
-        lineStyle: 0,
-        axisLabelVisible: true,
-        title: 'Swing High',
-      });
+      candleSeries.createPriceLine({ price: swingHigh, color: '#26a69a', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: 'High' });
     }
     if (swingLow) {
-      candleSeries.createPriceLine({
-        price: swingLow,
-        color: '#ef4444',
-        lineWidth: 2,
-        lineStyle: 0,
-        axisLabelVisible: true,
-        title: 'Swing Low',
-      });
+      candleSeries.createPriceLine({ price: swingLow, color: '#ef5350', lineWidth: 1, lineStyle: 0, axisLabelVisible: true, title: 'Low' });
     }
   }
 
-  // ── Trade setup (mode = 'trade') ──
+  // ── Trade setup (mode = 'trade') — Position Tool style ──
   if (mode === 'trade' && trade) {
     const badge = document.getElementById('badge');
     badge.style.display = 'block';
     badge.className = 'chart-badge ' + trade.side;
     badge.textContent = trade.side.toUpperCase();
 
-    // Entry line
-    candleSeries.createPriceLine({
-      price: trade.entry,
-      color: '#3b82f6',
-      lineWidth: 2,
-      lineStyle: 0,
-      axisLabelVisible: true,
-      title: '► ENTRY',
-    });
+    // Draw trade lines (entry, SL, TP) — thin dashed lines full width
+    candleSeries.createPriceLine({ price: trade.entry, color: '#2962ff', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
+    candleSeries.createPriceLine({ price: trade.sl, color: '#ef5350', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
+    candleSeries.createPriceLine({ price: trade.tp, color: '#26a69a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '' });
 
-    // SL line
-    candleSeries.createPriceLine({
-      price: trade.sl,
-      color: '#ef4444',
-      lineWidth: 2,
-      lineStyle: 0,
-      axisLabelVisible: true,
-      title: '✕ STOP LOSS',
-    });
+    // ── Position Tool boxes — drawn as HTML overlay ──
+    // Wait for chart to render, then draw boxes using coordinate mapping
+    setTimeout(() => {
+      const timeScale = chart.timeScale();
+      const priceScale = candleSeries.priceToCoordinate;
 
-    // TP line
-    candleSeries.createPriceLine({
-      price: trade.tp,
-      color: '#22c55e',
-      lineWidth: 2,
-      lineStyle: 0,
-      axisLabelVisible: true,
-      title: '✓ TAKE PROFIT',
-    });
+      // Get pixel coordinates for price levels
+      const entryY = candleSeries.priceToCoordinate(trade.entry);
+      const slY = candleSeries.priceToCoordinate(trade.sl);
+      const tpY = candleSeries.priceToCoordinate(trade.tp);
 
-    // SL zone (red shaded area)
-    const slZone = chart.addAreaSeries({
-      topColor: 'rgba(239,68,68,0.08)',
-      bottomColor: 'rgba(239,68,68,0.08)',
-      lineColor: 'transparent',
-      priceScaleId: 'right',
-    });
-    const zoneData = chartData.slice(-30).map(d => ({
-      time: d.time,
-      value: trade.side === 'long' ? trade.sl : trade.sl,
-    }));
-    // We'll use markers instead for cleaner look
+      // Get X position: start from ~75% of chart width, extend to price scale
+      const lastBarX = timeScale.timeToCoordinate(chartData[chartData.length - 1].time);
+      const boxLeft = lastBarX + 10;
+      const boxRight = 1215; // just before price scale
+
+      if (entryY !== null && slY !== null && tpY !== null) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:5;';
+
+        // TP zone (green box)
+        const tpBox = document.createElement('div');
+        const tpTop = Math.min(entryY, tpY);
+        const tpHeight = Math.abs(tpY - entryY);
+        tpBox.style.cssText = 'position:absolute;background:rgba(38,166,154,0.25);border:1px solid rgba(38,166,154,0.4);' +
+          'left:' + boxLeft + 'px;top:' + tpTop + 'px;width:' + (boxRight - boxLeft) + 'px;height:' + tpHeight + 'px;';
+
+        // TP label
+        const tpLabel = document.createElement('div');
+        tpLabel.style.cssText = 'position:absolute;top:4px;right:4px;font-size:11px;font-weight:700;color:#26a69a;font-family:SF Mono,monospace;';
+        tpLabel.textContent = '$' + trade.tp.toFixed(2);
+        tpBox.appendChild(tpLabel);
+        overlay.appendChild(tpBox);
+
+        // SL zone (red box)
+        const slBox = document.createElement('div');
+        const slTop = Math.min(entryY, slY);
+        const slHeight = Math.abs(slY - entryY);
+        slBox.style.cssText = 'position:absolute;background:rgba(239,83,80,0.2);border:1px solid rgba(239,83,80,0.35);' +
+          'left:' + boxLeft + 'px;top:' + slTop + 'px;width:' + (boxRight - boxLeft) + 'px;height:' + slHeight + 'px;';
+
+        // SL label
+        const slLabel = document.createElement('div');
+        slLabel.style.cssText = 'position:absolute;bottom:4px;right:4px;font-size:11px;font-weight:700;color:#ef5350;font-family:SF Mono,monospace;';
+        slLabel.textContent = '$' + trade.sl.toFixed(2);
+        slBox.appendChild(slLabel);
+        overlay.appendChild(slBox);
+
+        // Entry line label
+        const entryLabel = document.createElement('div');
+        entryLabel.style.cssText = 'position:absolute;left:' + boxLeft + 'px;top:' + (entryY - 10) + 'px;font-size:11px;font-weight:700;color:#2962ff;font-family:SF Mono,monospace;background:rgba(19,23,34,0.8);padding:1px 6px;border-radius:3px;';
+        entryLabel.textContent = '$' + trade.entry.toFixed(2);
+        overlay.appendChild(entryLabel);
+
+        container.appendChild(overlay);
+      }
+    }, 300);
 
     // Trade panel
     const panel = document.getElementById('trade-panel');
     panel.style.display = 'block';
+    const fmt = (v) => '$' + v.toLocaleString('en-US', {maximumFractionDigits: 2});
+    const isLong = trade.side === 'long';
+    const sideIcon = isLong ? '🟢' : '🔴';
+    const sideColor = isLong ? 'green' : 'red';
     document.getElementById('trade-details').innerHTML =
-      '<div class="trade-row"><span class="trade-label">Entry</span><span class="trade-val blue">$' + trade.entry.toLocaleString('en-US', {maximumFractionDigits: 6}) + '</span></div>' +
-      '<div class="trade-row"><span class="trade-label">Stop Loss</span><span class="trade-val red">$' + trade.sl.toLocaleString('en-US', {maximumFractionDigits: 6}) + '</span></div>' +
-      '<div class="trade-row"><span class="trade-label">Take Profit</span><span class="trade-val green">$' + trade.tp.toLocaleString('en-US', {maximumFractionDigits: 6}) + '</span></div>' +
+      '<div class="trade-row"><span class="trade-label">' + sideIcon + ' Side</span><span class="trade-val ' + sideColor + '">' + trade.side.toUpperCase() + '</span></div>' +
+      '<div class="trade-row"><span class="trade-label">Entry</span><span class="trade-val blue">' + fmt(trade.entry) + '</span></div>' +
+      '<div class="trade-row"><span class="trade-label">Stop Loss</span><span class="trade-val red">' + fmt(trade.sl) + '</span></div>' +
+      '<div class="trade-row"><span class="trade-label">Take Profit</span><span class="trade-val green">' + fmt(trade.tp) + '</span></div>' +
       '<div class="trade-row"><span class="trade-label">Risk</span><span class="trade-val">$' + trade.risk + '</span></div>' +
-      '<div class="trade-row"><span class="trade-label">Size</span><span class="trade-val">' + trade.positionSize.toFixed(4) + '</span></div>' +
       '<div class="trade-rr">R:R  1 : ' + trade.rr.toFixed(1) + '</div>';
 
-    // Zoom to trade area
-    const prices = [trade.entry, trade.sl, trade.tp];
-    const minP = Math.min(...prices);
-    const maxP = Math.max(...prices);
-    const padding = (maxP - minP) * 0.3;
-    // Focus on last 60 candles for trade view
-    chart.timeScale().setVisibleLogicalRange({ from: chartData.length - 60, to: chartData.length + 5 });
+    // Zoom: show last 50 candles for trade view
+    chart.timeScale().setVisibleLogicalRange({ from: chartData.length - 50, to: chartData.length + 8 });
   } else {
-    // Macro view — show all data
+    // Macro view
     chart.timeScale().fitContent();
   }
 
-  // Signal render complete
   window.__CHART_READY__ = true;
 }
 
-// Wait for data injection then render
-if (window.__CHART_DATA__) {
+if (window.__CHART_DATA__ && Object.keys(window.__CHART_DATA__).length) {
   render();
 } else {
   Object.defineProperty(window, '__CHART_DATA__', {
-    set(val) { DATA.__proto__ = {}; Object.assign(DATA, val); render(); },
+    set(val) { Object.assign(DATA, val); render(); },
     get() { return DATA; },
     configurable: true,
   });

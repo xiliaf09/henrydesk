@@ -47,7 +47,7 @@ const config = {
 
   // --- Fibonacci ---
   fibonacci: {
-    timeframes: ['4h', '1d', '1w'],
+    timeframes: ['1h', '4h', '1d'],
     levels: [0.236, 0.382, 0.5, 0.618, 0.786],
     swingDetection: 'auto',    // 'auto' | 'manual' | 'hybrid'
     swingLookback: 100,        // candles to look back for swing detection

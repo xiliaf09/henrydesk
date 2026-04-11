@@ -9,14 +9,18 @@ const path = require('path');
 let bot = null;
 let _S = null;
 let _config = null;
-let _lastMsgId = 0; // anti-duplicate
+const _processedMsgs = new Set(); // anti-duplicate
 
 function initTelegram(S, config) {
   _S = S;
   _config = config;
 
   bot = new TelegramBot(config.telegramToken, {
-    polling: { interval: 2000, params: { timeout: 10 } },
+    polling: {
+      interval: 2000,
+      autoStart: true,
+      params: { timeout: 30 },
+    },
   });
 
   bot.on('polling_error', (err) => {
@@ -165,9 +169,17 @@ function initTelegram(S, config) {
 
 function isAuthorized(msg) {
   if (String(msg.chat.id) !== String(_config.telegramChatId)) return false;
-  // Anti-duplicate: skip if we already processed this message
-  if (msg.message_id && msg.message_id <= _lastMsgId) return false;
-  if (msg.message_id) _lastMsgId = msg.message_id;
+  // Anti-duplicate: each message_id processed only ONCE across all handlers
+  const mid = msg.message_id;
+  if (mid && _processedMsgs.has(mid)) return false;
+  if (mid) {
+    _processedMsgs.add(mid);
+    // Cleanup: keep only last 100 IDs in memory
+    if (_processedMsgs.size > 100) {
+      const oldest = _processedMsgs.values().next().value;
+      _processedMsgs.delete(oldest);
+    }
+  }
   return true;
 }
 

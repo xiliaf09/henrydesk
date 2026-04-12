@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.1.0 (2026-04-12)
+
+**Signaux Telegram Pro — Scoring, Analyse Enrichie, Quick Adjust**
+
+### Features
+- Système de scoring (0-100) avec grade A/B/C/D pour chaque setup
+- Analyse de trend multi-timeframe (EMA 20/50 par TF)
+- Analyse de volume vs moyenne 20 bougies
+- Thèse contextuelle enrichie (trend alignment, fibo quality, volume)
+- Messages Telegram redesignés : format pro, $ outcomes en premier
+- Boutons d'action rapide : GO / PASS / TP élargi / SL serré
+- Filtrage automatique : setups grade D (score < 50) ne déclenchent plus d'alerte
+- Leverage calculé auto dans les propositions (cap 20x)
+
+### Améliorations
+- R:R affiché avec étoiles (⭐ ≥2.5, ⭐⭐ ≥3)
+- Pourcentages SL/TP dans les messages d'exécution
+- /test enrichi : génère une alerte complète avec scoring réel
+- /stats affiche le compteur d'alertes (envoyées/approuvées/rejetées)
+- Protection division par zéro dans generateProposal
+
+---
+
 ## v1.0.0 (2026-04-11)
 
 **Release initiale — HenryDesk**

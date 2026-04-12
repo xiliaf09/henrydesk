@@ -23,6 +23,7 @@ function loadData() {
       _S.watchlist = data.watchlist || [];
       _S.tradeHistory = data.tradeHistory || [];
       _S.stats = data.stats || _S.stats;
+      _S.fiboSetups = data.fiboSetups || {};
     }
   } catch (err) {
     console.error('⚠️  Failed to load data.json:', err.message);
@@ -35,6 +36,7 @@ function saveData() {
       watchlist: _S.watchlist,
       tradeHistory: _S.tradeHistory,
       stats: _S.stats,
+      fiboSetups: _S.fiboSetups || {},
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));

@@ -44,6 +44,7 @@ const config = {
     marginMode: 'isolated',    // always isolated
     defaultLeverage: 5,        // fallback if not calculated
     minRR: 2.0,                // minimum R:R to trigger alert (1:2)
+    minScore: 50,              // minimum setup score to alert (0-100, grade C+)
   },
 
   // --- Fibonacci ---

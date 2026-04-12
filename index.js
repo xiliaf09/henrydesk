@@ -3,7 +3,7 @@
 // Hyperliquid · Telegram · Jarvis Hub
 // ============================================================
 
-const HENRY_VERSION = 'v1.0.0';
+const HENRY_VERSION = 'v1.1.0';
 
 const config = require('./config');
 const express = require('express');
@@ -21,6 +21,7 @@ const S = {
   tradeHistory: [],       // [{ symbol, side, entry, exit, pnl, r, closedAt }]
   pendingAlerts: [],      // [{ id, symbol, tf, fiboLevel, proposal, sentAt }]
   alertHistory: [],       // [{ id, symbol, tf, fiboLevel, thesis, side, sentAt, action }]
+  fiboSetups: {},          // manual fibo levels { 'BTC_1d': { symbol, tf, swingHigh, swingLow, levels, setAt, expiresAt } }
   stats: {
     totalTrades: 0,
     wins: 0,
